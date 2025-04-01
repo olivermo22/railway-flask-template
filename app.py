@@ -1,10 +1,15 @@
 from flask import Flask, request, jsonify
+import os
+import openai
 
 app = Flask(__name__)
 
+# Cliente OpenAI con la API Key desde variables de entorno
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 @app.route("/", methods=["GET"])
 def home():
-    return "Webhook funcionando correctamente (modo prueba)"
+    return "Webhook conectado a OpenAI (gpt-4o-mini)"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -15,10 +20,21 @@ def webhook():
     if not mensaje_usuario:
         return jsonify({"error": "Mensaje vacío"}), 400
 
-    # Simulación sin conexión a OpenAI
-    respuesta_falsa = f"Recibí tu mensaje: {mensaje_usuario}"
+    try:
+        respuesta = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Responde como un asistente profesional y amable."},
+                {"role": "user", "content": mensaje_usuario}
+            ]
+        )
 
-    return jsonify({
-        "text": respuesta_falsa,
-        "to": numero_cliente
-    })
+        mensaje_respuesta = respuesta.choices[0].message.content
+
+        return jsonify({
+            "text": mensaje_respuesta,
+            "to": numero_cliente
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
